@@ -1,4 +1,5 @@
 (cram
  (deps
   %{bin:valet}
-  (glob_files examples/*.ml)))
+  (glob_files examples/good/*.ml)
+  (glob_files examples/bad/*.ml)))
