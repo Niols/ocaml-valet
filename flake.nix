@@ -58,6 +58,7 @@
             inherit (self'.checks.git-hooks) shellHook;
             buildInputs = self'.checks.git-hooks.enabledPackages ++ [
               (gitHookBinFor myTopiaryConfig)
+              opkgs.ocaml-lsp
             ];
           };
 
