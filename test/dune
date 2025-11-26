@@ -1,0 +1,5 @@
+(test
+ (name test_valet)
+ (libraries valet alcotest)
+ (preprocess
+  (pps valet)))
