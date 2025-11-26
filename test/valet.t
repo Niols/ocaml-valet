@@ -1,10 +1,13 @@
 Test the valet PPX transformations
-=================================
+==================================
 
 Setup
 -----
 
   $ test_valet() { ocamlc -ppx 'valet --as-ppx' -dsource -c "$1" 2>&1; }
+
+Good examples
+=============
 
 Simple function
 ---------------
@@ -46,8 +49,8 @@ Mutually recursive functions
   and is_odd n = if n = 0 then false else is_even (n - 1)
 
   $ test_valet examples/good/mutual_recursion.ml
-  let rec is_even : int -> bool = fun n ->
-    if n = 0 then true else is_odd (n - 1)
+  let rec is_even : int -> bool =
+    fun n -> if n = 0 then true else is_odd (n - 1)
   and is_odd : int -> bool = fun n -> if n = 0 then false else is_even (n - 1)
 
 Mixed arities in mutual recursion
@@ -61,11 +64,11 @@ Mixed arities in mutual recursion
 
   $ test_valet examples/good/mixed_arities.ml
   let rec factorial : int -> int = fun n -> factorial_acc n 1
-  and factorial_acc : int -> int -> int = fun n acc ->
-    if n <= 1 then acc else factorial_acc (n - 1) (n * acc)
+  and factorial_acc : int -> int -> int =
+    fun n acc -> if n <= 1 then acc else factorial_acc (n - 1) (n * acc)
 
 Bad examples (should fail or be rejected)
-==========================================
+=========================================
 
 Val appearing after let (wrong order)
 --------------------------------------
@@ -113,7 +116,7 @@ Shadowing case
   (* The first val should not apply to the second x *)
   val x : int
   let x = 42
-
+  
   let x = "hello"
 
   $ test_valet examples/bad/shadowing.ml
