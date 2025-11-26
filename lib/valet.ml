@@ -1,18 +1,31 @@
 open Ppxlib
 open Ast_builder.Default
 
-(* Transform a value_binding by adding a type constraint *)
+(** Add a type constraint to a [let]-binding. *)
 let add_type_constraint (typ : core_type) (binding : value_binding) : value_binding =
   {binding with pvb_constraint = Some (Pvc_constraint {locally_abstract_univars = []; typ})}
 
+(** Returns the one element in a list, and fails if there are none or multiple. *)
 let unsingleton = function [x] -> x | _ -> failwith "unsingleton"
 
+(** Return the name of a let-binding, assuming it is a simple [let <name> =]. *)
+(* FIXME: handle more cases *)
 let binding_name = function
   | {pvb_pat = {ppat_desc = Ppat_var {txt = name; _}; _}; _} -> name
   | _ -> failwith "binding_name"
 
-(* Transform a let binding using collected val declarations *)
+(** Merge a list of [val] statements into the [let]-binding that directly
+    follows them. *)
 let merge_vals_let ~loc vals rec_flag bindings =
+  let () =
+    let binding_names = List.map binding_name bindings in
+    List.iter
+      (fun (name, (loc, _)) ->
+        if not (List.mem name binding_names) then
+          Location.raise_errorf ~loc "val declaration is unused by the following let binding"
+      )
+      vals
+  in
   unsingleton @@
   pstr_value_list ~loc rec_flag @@
   List.map
@@ -23,6 +36,8 @@ let merge_vals_let ~loc vals rec_flag bindings =
     )
     bindings
 
+(** Go through the whole file, collect [val] statements and merge them into the
+    [let]-binding that directly follows them, using {!merge_vals_let}. *)
 let impl =
   let rec impl (vals : (string * (location * core_type)) list) : structure_item list -> structure_item list = function
     | item :: items ->

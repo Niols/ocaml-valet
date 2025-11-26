@@ -152,5 +152,12 @@ Val without matching let
   let x = 42
 
   $ test_valet examples/bad/val_without_let.ml
-  let x : int = 42
-  [BUG: val y silently ignored, should warn or error!]
+  [%%ocaml.error "val declaration is unused by the following let binding"]
+  external x : int
+  external y : string
+  let x = 42
+  File "examples/bad/val_without_let.ml", line 3, characters 0-14:
+  3 | val y : string
+      ^^^^^^^^^^^^^^
+  Error: val declaration is unused by the following let binding
+  [2]
