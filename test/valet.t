@@ -67,6 +67,85 @@ Mixed arities in mutual recursion
   and factorial_acc : int -> int -> int =
     fun n acc -> if n <= 1 then acc else factorial_acc (n - 1) (n * acc)
 
+Explicit universal quantification
+----------------------------------
+
+  $ cat examples/good/explicit_forall.ml
+  (* Explicit universal quantification *)
+  val id : 'a. 'a -> 'a
+  let id x = x
+
+  $ test_valet examples/good/explicit_forall.ml
+  let id : 'a . 'a -> 'a = fun x -> x
+
+Polymorphic methods in objects
+-------------------------------
+
+  $ cat examples/good/polymorphic_method.ml
+  (* Polymorphic methods in objects *)
+  val obj : < m : 'a. 'a -> 'a >
+  let obj = object method m : 'a. 'a -> 'a = fun x -> x end
+
+  $ test_valet examples/good/polymorphic_method.ml
+  let obj : < m: 'a . 'a -> 'a   >  =
+    object method m : 'a . 'a -> 'a= fun x -> x end
+
+Let with existing type constraint
+----------------------------------
+
+  $ cat examples/good/let_with_existing_constraint.ml
+  (* Val with let that already has type annotations *)
+  val f : int -> int
+  let f (x : int) : int = x + 1
+
+  $ test_valet examples/good/let_with_existing_constraint.ml
+  let f : int -> int = fun (x : int) : int-> x + 1
+
+GADT function with locally abstract types
+------------------------------------------
+
+  $ cat examples/good/gadt_function.ml
+  (* GADT function with locally abstract type in implementation *)
+  type _ t = Int : int t | String : string t
+  val show : 'a t -> string
+  let show (type a) (x : a t) : string =
+    match x with
+    | Int -> "int"
+    | String -> "string"
+
+  $ test_valet examples/good/gadt_function.ml
+  type _ t =
+    | Int: int t 
+    | String: string t 
+  let show : 'a t -> string =
+    fun (type a) (x : a t) : string->
+      match x with | Int -> "int" | String -> "string"
+
+External declaration (not treated as val)
+------------------------------------------
+
+  $ cat examples/good/external_not_val.ml
+  (* External declarations should not be treated as vals *)
+  external get_time : unit -> float = "caml_get_time"
+  let get_time () = int_of_float (get_time ())
+
+  $ test_valet examples/good/external_not_val.ml
+  external get_time : unit -> float = "caml_get_time"
+  let get_time () = int_of_float (get_time ())
+
+Pattern binding (not yet supported)
+------------------------------------
+
+  $ cat examples/good/pattern_binding.ml
+  (* Pattern binding with multiple vals - not yet supported *)
+  val f : int -> int
+  val g : string -> string
+  let (f, g) = ((fun x -> x + 1), (fun s -> s ^ "!"))
+
+  $ test_valet examples/good/pattern_binding.ml
+  NOT YET SUPPORTED
+  [2]
+
 Bad examples (should fail or be rejected)
 =========================================
 
@@ -160,4 +239,17 @@ Val without matching let
   3 | val y : string
       ^^^^^^^^^^^^^^
   Error: val declaration is unused by the following let binding
+  [2]
+
+Pattern binding with explicit forall (OCaml syntax limitation)
+---------------------------------------------------------------
+
+  $ cat examples/bad/pattern_with_forall.ml
+  (* Pattern binding with explicit universal quantification - not possible in OCaml *)
+  val id : 'a. 'a -> 'a
+  val add_one : int -> int
+  let (id, add_one) = ((fun x -> x), (fun x -> x + 1))
+
+  $ test_valet examples/bad/pattern_with_forall.ml
+  NOT YET SUPPORTED
   [2]

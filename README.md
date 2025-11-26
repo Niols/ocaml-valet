@@ -12,7 +12,7 @@ let add x y = x + y
 let add : int -> int -> int = fun x y -> x + y
 ```
 
-For more examples, see [test/examples/](test/examples/).
+For more examples, see [test/valet.t](test/valet.t).
 
 ## Usage
 
