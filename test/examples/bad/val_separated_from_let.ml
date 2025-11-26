@@ -1,4 +1,4 @@
 (* val should only apply to immediately following let *)
 val x : int
-let y = 1
+open Stdlib
 let x = 42

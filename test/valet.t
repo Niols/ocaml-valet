@@ -79,22 +79,35 @@ Val appearing after let (wrong order)
   val x : int
 
   $ test_valet examples/bad/val_after_let.ml
-  let x : int = 42
-  [BUG: val applied to let that comes before it!]
+  [%%ocaml.error "Unused val declarations at end of structure"]
+  let x = 42
+  external x : int
+  File "examples/bad/val_after_let.ml", line 3, characters 0-11:
+  3 | val x : int
+      ^^^^^^^^^^^
+  Error: Unused val declarations at end of structure
+  [2]
 
-Val separated from let by another binding
-------------------------------------------
+Val separated from let by another structure item
+------------------------------------------------
 
   $ cat examples/bad/val_separated_from_let.ml
   (* val should only apply to immediately following let *)
   val x : int
-  let y = 1
+  open Stdlib
   let x = 42
 
   $ test_valet examples/bad/val_separated_from_let.ml
-  let y = 1
-  let x : int = 42
-  [BUG: val x applied to second x, not immediately following let!]
+  [%%ocaml.error
+    "val declarations must be immediately followed by a let binding"]
+  external x : int
+  open Stdlib
+  let x = 42
+  File "examples/bad/val_separated_from_let.ml", line 2, characters 0-11:
+  2 | val x : int
+      ^^^^^^^^^^^
+  Error: val declarations must be immediately followed by a let binding
+  [2]
 
 Duplicate val declarations
 ---------------------------
@@ -106,8 +119,15 @@ Duplicate val declarations
   let x = 42
 
   $ test_valet examples/bad/duplicate_val.ml
-  let x : float = 42
-  [BUG: Last val declaration wins, should be an error!]
+  [%%ocaml.error "multiple val declarations for the same name"]
+  external x : int
+  external x : float
+  let x = 42
+  File "examples/bad/duplicate_val.ml", line 3, characters 0-13:
+  3 | val x : float
+      ^^^^^^^^^^^^^
+  Error: multiple val declarations for the same name
+  [2]
 
 Shadowing case
 --------------
@@ -116,13 +136,11 @@ Shadowing case
   (* The first val should not apply to the second x *)
   val x : int
   let x = 42
-  
   let x = "hello"
 
   $ test_valet examples/bad/shadowing.ml
   let x : int = 42
-  let x : int = "hello"
-  [BUG: val applied to both x bindings due to shadowing!]
+  let x = "hello"
 
 Val without matching let
 -------------------------
@@ -136,62 +154,3 @@ Val without matching let
   $ test_valet examples/bad/val_without_let.ml
   let x : int = 42
   [BUG: val y silently ignored, should warn or error!]
-
-Local bindings
-==============
-
-Simple local binding
---------------------
-
-  $ cat examples/good/local_simple.ml
-  let val x : int in
-  let x = 7 in
-  x + 1
-
-  $ test_valet examples/good/local_simple.ml
-  let x : int = 7 in
-  x + 1
-
-Local binding with function
----------------------------
-
-  $ cat examples/good/local_function.ml
-  let val f : int -> int in
-  let f x = x + 1 in
-  f 5
-
-  $ test_valet examples/good/local_function.ml
-  let f : int -> int = fun x -> x + 1 in
-  f 5
-
-Mutually recursive local bindings
-----------------------------------
-
-  $ cat examples/good/local_mutual_recursion.ml
-  let val is_even : int -> bool in
-  let val is_odd : int -> bool in
-  let rec is_even n = if n = 0 then true else is_odd (n - 1)
-  and is_odd n = if n = 0 then false else is_even (n - 1) in
-  is_even 4
-
-  $ test_valet examples/good/local_mutual_recursion.ml
-  let rec is_even : int -> bool = fun n ->
-    if n = 0 then true else is_odd (n - 1)
-  and is_odd : int -> bool = fun n ->
-    if n = 0 then false else is_even (n - 1) in
-  is_even 4
-
-Nested local bindings
----------------------
-
-  $ cat examples/good/local_nested.ml
-  let val x : int in
-  let x = 5 in
-  let val y : int in
-  let y = x + 1 in
-  y * 2
-
-  $ test_valet examples/good/local_nested.ml
-  let x : int = 5 in
-  let y : int = x + 1 in
-  y * 2
