@@ -1,5 +1,4 @@
-(test
- (name test_valet)
- (libraries valet alcotest)
- (preprocess
-  (pps valet)))
+(cram
+ (deps
+  %{bin:valet}
+  (glob_files examples/*.ml)))

@@ -70,6 +70,8 @@
               nixfmt-rfc-style.enable = true;
               topiary-latest = gitHookFor myTopiaryConfig // {
                 enable = true;
+                ## Topiary of course does not support `val` statements in `.ml` files.
+                excludes = [ "test/examples/.*\\.ml" ];
               };
             };
           };
