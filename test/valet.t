@@ -63,3 +63,62 @@ Mixed arities in mutual recursion
   let rec factorial : int -> int = fun n -> factorial_acc n 1
   and factorial_acc : int -> int -> int = fun n acc ->
     if n <= 1 then acc else factorial_acc (n - 1) (n * acc)
+
+Local bindings
+==============
+
+Simple local binding
+--------------------
+
+  $ cat examples/local_simple.ml
+  let val x : int in
+  let x = 7 in
+  x + 1
+
+  $ test_valet examples/local_simple.ml
+  let x : int = 7 in
+  x + 1
+
+Local binding with function
+---------------------------
+
+  $ cat examples/local_function.ml
+  let val f : int -> int in
+  let f x = x + 1 in
+  f 5
+
+  $ test_valet examples/local_function.ml
+  let f : int -> int = fun x -> x + 1 in
+  f 5
+
+Mutually recursive local bindings
+----------------------------------
+
+  $ cat examples/local_mutual_recursion.ml
+  let val is_even : int -> bool in
+  let val is_odd : int -> bool in
+  let rec is_even n = if n = 0 then true else is_odd (n - 1)
+  and is_odd n = if n = 0 then false else is_even (n - 1) in
+  is_even 4
+
+  $ test_valet examples/local_mutual_recursion.ml
+  let rec is_even : int -> bool = fun n ->
+    if n = 0 then true else is_odd (n - 1)
+  and is_odd : int -> bool = fun n ->
+    if n = 0 then false else is_even (n - 1) in
+  is_even 4
+
+Nested local bindings
+---------------------
+
+  $ cat examples/local_nested.ml
+  let val x : int in
+  let x = 5 in
+  let val y : int in
+  let y = x + 1 in
+  y * 2
+
+  $ test_valet examples/local_nested.ml
+  let x : int = 5 in
+  let y : int = x + 1 in
+  y * 2
