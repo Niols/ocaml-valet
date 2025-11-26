@@ -66,6 +66,40 @@ A second limitation comes from OCaml tooling, which will not expect the use of
 `val` in an OCaml file. Most likely, your favourite formatter or documentation
 generator will not handle such files in a clean fashion.
 
+Other limitations are not insurmountable but just require me to do the work. One
+example is that Valet should generalise type variables, because things like
+
+```ocaml
+val f : 'a -> 'b
+let f x = x + 1
+
+(* changed into: *)
+
+let f : 'a -> 'b = fun x -> x +1
+```
+
+would type just fine in general, while a user could expect it to mean the same
+as:
+
+```ocaml
+val f : 'a 'b. 'a -> 'b
+let f x = x + 1
+```
+
+which will indeed be rejected because `int -> int` is less general than `'a 'b.
+'a -> 'b`. Another example is that Valet currently does not recurse into
+submodules (or into anything, really), so code like:
+
+```ocaml
+module Foo = struct
+  val bar : int
+  let bar = 1
+end
+```
+
+will get rejected, while there is no fundamental issue preventing this from
+being supported.
+
 Finally, there are some other, more subtle, limitations; for instance, Valet
 does not behave well when types are universally quantified and multiple values
 are bound at once, eg.:
