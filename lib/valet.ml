@@ -1,40 +1,86 @@
 open Ppxlib
 open Ast_builder.Default
 
-(** Add a type constraint to a [let]-binding. *)
-let add_type_constraint (typ : core_type) (binding : value_binding) : value_binding =
-  {binding with pvb_constraint = Some (Pvc_constraint {locally_abstract_univars = []; typ})}
-
 (** Returns the one element in a list, and fails if there are none or multiple. *)
 let unsingleton = function [x] -> x | _ -> failwith "unsingleton"
 
-(** Return the name of a let-binding, assuming it is a simple [let <name> =]. *)
-(* FIXME: handle more cases *)
-let binding_name = function
-  | {pvb_pat = {ppat_desc = Ppat_var {txt = name; _}; _}; _} -> name
-  | _ -> failwith "binding_name"
+(** Map over variables in a pattern, calling its argument for each [Ppat_var]. *)
+let rec map_vars_in_pattern (f : string Asttypes.loc -> pattern_desc) (pat : pattern) : pattern =
+  let desc =
+    match pat.ppat_desc with
+    | Ppat_var name -> f name
+    | Ppat_tuple pats -> Ppat_tuple (List.map (map_vars_in_pattern f) pats)
+    | Ppat_constraint (p, ct) -> Ppat_constraint (map_vars_in_pattern f p, ct)
+    | Ppat_alias (p, name) -> Ppat_alias (map_vars_in_pattern f p, name)
+    | Ppat_construct (lid, arg) ->
+      let arg' = Option.map (fun (lbls, p) -> (lbls, map_vars_in_pattern f p)) arg in
+      Ppat_construct (lid, arg')
+    | Ppat_record (fields, closed) ->
+      let fields' = List.map (fun (lid, p) -> (lid, map_vars_in_pattern f p)) fields in
+      Ppat_record (fields', closed)
+    | Ppat_or (p1, p2) ->
+      Ppat_or (map_vars_in_pattern f p1, map_vars_in_pattern f p2)
+    | _ -> pat.ppat_desc
+  in
+    {pat with ppat_desc = desc}
+
+(** Returns the variables from a pattern. *)
+let vars_in_pattern pat =
+  let vars = ref [] in
+  let _ = map_vars_in_pattern (fun var -> vars := var.txt :: !vars; Ppat_var var) pat in
+  List.rev !vars
+
+(** Add type constraints from [vals] to a binding. If the pattern is a simple
+    variable, uses [pvb_constraint]. Otherwise, uses [Ppat_constraint] on all
+    variables in the pattern. *)
+let add_type_constraints_to_binding (vals : (string * (location * core_type)) list) (binding : value_binding) : value_binding =
+  match binding.pvb_pat.ppat_desc with
+  | Ppat_var {txt = name; _} ->
+    (
+      (* For simple variable binding, eg. [let f = ...], we use pvb_constraint. *)
+      match List.assoc_opt name vals with
+      | None -> binding
+      | Some (loc, typ) ->
+        if binding.pvb_constraint <> None then
+          Location.raise_errorf
+            ~loc
+            "val declaration conflicts with existing type constraint on let binding. \
+             Remove one of the two, or rewrite into a pattern type constraint, \
+             eg. change `let f : t = …` into `let (f : t) = …`.";
+        {binding with
+          pvb_constraint = Some (Pvc_constraint {locally_abstract_univars = []; typ})
+        }
+    )
+  | _ ->
+    (* For more complex pattern binding, fall back on using Ppat_constraint on
+       each variable. This will work but only on smaller types; for instance, no
+       universal quantification anymore. *)
+    {binding with
+      pvb_pat =
+      map_vars_in_pattern
+        (fun var ->
+          match List.assoc_opt var.txt vals with
+          | None -> Ppat_var var
+          | Some (_, typ) -> Ppat_constraint (ppat_var ~loc: var.loc var, typ)
+        )
+        binding.pvb_pat
+    }
 
 (** Merge a list of [val] statements into the [let]-binding that directly
     follows them. *)
 let merge_vals_let ~loc vals rec_flag bindings =
-  let () =
-    let binding_names = List.map binding_name bindings in
-    List.iter
-      (fun (name, (loc, _)) ->
-        if not (List.mem name binding_names) then
-          Location.raise_errorf ~loc "val declaration is unused by the following let binding"
-      )
-      vals
-  in
+  (* check that the names in [vals] are included in those bound by [bindings] *)
+  let binding_names = List.concat_map (fun b -> vars_in_pattern b.pvb_pat) bindings in
+  List.iter
+    (fun (name, (loc, _)) ->
+      if not (List.mem name binding_names) then
+        Location.raise_errorf ~loc "val declaration is unused by the following let binding"
+    )
+    vals;
+  (* generate a new binding with type constraints where possible *)
   unsingleton @@
   pstr_value_list ~loc rec_flag @@
-  List.map
-    (fun binding ->
-      match List.assoc_opt (binding_name binding) vals with
-      | None -> binding
-      | Some (_, typ) -> add_type_constraint typ binding
-    )
-    bindings
+  List.map (add_type_constraints_to_binding vals) bindings
 
 (** Go through the whole file, collect [val] statements and merge them into the
     [let]-binding that directly follows them, using {!merge_vals_let}. *)

@@ -133,6 +133,19 @@ External declaration (not treated as val)
   external get_time : unit -> float = "caml_get_time"
   let get_time () = int_of_float (get_time ())
 
+Val with existing type constraint in pattern
+---------------------------------------------
+
+  $ cat examples/good/val_with_pattern_constraint.ml
+  (* Val with pattern that already has constraint *)
+  val f : int -> int
+  val g : string -> string
+  let ((f : int -> int), g) = ((fun x -> x + 1), (fun s -> s ^ "!"))
+
+  $ test_valet examples/good/val_with_pattern_constraint.ml
+  let (((f : int -> int) : int -> int), (g : string -> string)) =
+    ((fun x -> x + 1), (fun s -> s ^ "!"))
+
 Pattern binding (not yet supported)
 ------------------------------------
 
@@ -143,8 +156,8 @@ Pattern binding (not yet supported)
   let (f, g) = ((fun x -> x + 1), (fun s -> s ^ "!"))
 
   $ test_valet examples/good/pattern_binding.ml
-  NOT YET SUPPORTED
-  [2]
+  let ((f : int -> int), (g : string -> string)) =
+    ((fun x -> x + 1), (fun s -> s ^ "!"))
 
 Bad examples (should fail or be rejected)
 =========================================
@@ -241,6 +254,27 @@ Val without matching let
   Error: val declaration is unused by the following let binding
   [2]
 
+Val with existing type constraint on let binding
+-------------------------------------------------
+
+  $ cat examples/bad/val_with_existing_constraint.ml
+  (* Both val and let have type constraints - ambiguous *)
+  val f : int -> int
+  let f : int -> int = fun x -> x + 1
+
+  $ test_valet examples/bad/val_with_existing_constraint.ml
+  [%%ocaml.error
+    "val declaration conflicts with existing type constraint on let binding. Remove one of the two, or rewrite into a pattern type constraint, eg. change `let f : t = \226\128\166` into `let (f : t) = \226\128\166`."]
+  external f : int -> int
+  let f : int -> int = fun x -> x + 1
+  File "examples/bad/val_with_existing_constraint.ml", line 2, characters 0-18:
+  2 | val f : int -> int
+      ^^^^^^^^^^^^^^^^^^
+  Error: val declaration conflicts with existing type constraint on let
+         binding. Remove one of the two, or rewrite into a pattern type
+         constraint, eg. change `let f : t = …` into `let (f : t) = …`.
+  [2]
+
 Pattern binding with explicit forall (OCaml syntax limitation)
 ---------------------------------------------------------------
 
@@ -251,5 +285,11 @@ Pattern binding with explicit forall (OCaml syntax limitation)
   let (id, add_one) = ((fun x -> x), (fun x -> x + 1))
 
   $ test_valet examples/bad/pattern_with_forall.ml
-  NOT YET SUPPORTED
+  let ((id : 'a . 'a -> 'a), (add_one : int -> int)) =
+    ((fun x -> x), (fun x -> x + 1))
+  File "examples/bad/pattern_with_forall.ml", line 4, characters 21-33:
+  4 | let (id, add_one) = ((fun x -> x), (fun x -> x + 1))
+                           ^^^^^^^^^^^^
+  Error: This expression should not be a function, the expected type is
+         'a. 'a -> 'a
   [2]
