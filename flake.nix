@@ -46,7 +46,7 @@
             version = "dev";
             src = ./.;
             doCheck = true;
-            buildInputs = with opkgs; [ ppxlib ];
+            propagatedBuildInputs = with opkgs; [ ppxlib ];
             checkInputs = with opkgs; [
               alcotest
               ppx_inline_test
