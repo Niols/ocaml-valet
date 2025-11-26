@@ -3,6 +3,10 @@
 An OCaml preprocessor allowing to declare types from `let`-bindings with a
 preceeding `val` declaration, “the Haskell way”.
 
+This is an old experiment of mine that I revived and cleaned up when I
+discovered https://github.com/ocaml/RFCs/pull/59 which shares the same goal but
+does it better.
+
 ## Example
 
 When a `val` declaration and a `let` binding follow each other at top-level,
@@ -54,9 +58,17 @@ will consume a file and print the OCaml result.
 ## Limitations
 
 The main limitation, at this point, is that Valet only works for top-level
-declarations, and is not available for local bindings. There are some other more
-subtle limitations; for instance, it does not behave well when types are
-universally quantified and multiple values are bound at once, eg.:
+declarations, and is not available for local bindings. This might be possible in
+the future, if https://github.com/ocaml/ocaml/pull/14040 gets merged, for
+instance.
+
+A second limitation comes from OCaml tooling, which will not expect the use of
+`val` in an OCaml file. Most likely, your favourite formatter or documentation
+generator will not handle such files in a clean fashion.
+
+Finally, there are some other, more subtle, limitations; for instance, Valet
+does not behave well when types are universally quantified and multiple values
+are bound at once, eg.:
 
 ```ocaml
 val id : 'a. 'a -> 'a
