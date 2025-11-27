@@ -1,5 +1,8 @@
 # Valet
 
+> [!WARNING]
+> This repository has been merged into [niols/camelotte](https://github.com/niols/camelotte). It is unmaintained.
+
 An OCaml preprocessor allowing to declare types from `let`-bindings with a
 preceeding `val` declaration, “the Haskell way”.
 
